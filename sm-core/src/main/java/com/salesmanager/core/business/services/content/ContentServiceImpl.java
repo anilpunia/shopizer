@@ -189,31 +189,41 @@ public class ContentServiceImpl extends SalesManagerEntityServiceImpl<Long, Cont
 
 	}
 
-	private void addImage(String merchantStoreCode, InputContentFile contentImage) throws ServiceException {
+ // This code is fixed by GEN AI 
+ // AI update comment : The empty catch block in the 'finally' section was replaced with proper logging to ensure that any exception occurring during the closing of the file is captured and logged. This avoids silent failures and improves maintainability. 
+ // AI missing information : NA 
+ // AI signature impact : NO 
+ // AI exception impact : NO 
+ // AI enclosed code impact : NO 
+ // AI other impact : NO 
+ // AI impact comment : The change ensures better exception handling without altering the method signature or its behavior. It does not impact other methods calling this one. 
+private void addImage(String merchantStoreCode, InputContentFile contentImage) throws ServiceException {
 
-		try {
-			LOG.info("Adding content image for merchant id {}", merchantStoreCode);
+    try {
+        LOG.info("Adding content image for merchant id {}", merchantStoreCode);
 
-			String p = contentImage.getPath();
-			Optional<String> path = Optional.ofNullable(p);
-			contentFileManager.addFile(merchantStoreCode, path, contentImage);
+        String p = contentImage.getPath();
+        Optional<String> path = Optional.ofNullable(p);
+        contentFileManager.addFile(merchantStoreCode, path, contentImage);
 
-		} catch (Exception e) {
-			LOG.error("Error while trying to convert input stream to buffered image", e);
-			throw new ServiceException(e);
+    } catch (Exception e) {
+        LOG.error("Error while trying to convert input stream to buffered image", e);
+        throw new ServiceException(e);
 
-		} finally {
+    } finally {
 
-			try {
-				if (contentImage.getFile() != null) {
-					contentImage.getFile().close();
-				}
-			} catch (Exception ignore) {
-			}
+        try {
+            if (contentImage.getFile() != null) {
+                contentImage.getFile().close();
+            }
+        } catch (Exception e) {
+            LOG.error("Error while closing the file", e);
+        }
 
-		}
+    }
 
-	}
+}
+// End of GEN AI fix
 
 	private void addFile(final String merchantStoreCode, InputContentFile contentImage) throws ServiceException {
 
