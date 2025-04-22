@@ -335,36 +335,42 @@ public class InitializationDatabaseImpl implements InitializationDatabase {
 	}
 
 	
-	private void addZonesToDb(Map<String,Zone> zonesMap) throws RuntimeException {
-		
-		try {
-		
-	        for (Map.Entry<String, Zone> entry : zonesMap.entrySet()) {
-	    	    String key = entry.getKey();
-	    	    Zone value = entry.getValue();
+ // This code is fixed by GEN AI 
+ // AI update comment : String concatenation inside the loop was replaced with StringBuilder to avoid creating multiple immutable String objects, which can impact performance in large loops. 
+ // AI missing information : NA 
+ // AI signature impact : NO 
+ // AI exception impact : NO 
+ // AI enclosed code impact : NO 
+ // AI other impact : NO 
+ // AI impact comment : The change is internal to the method and does not affect its signature, exception handling, or interactions with other methods. Performance improvement is expected for large input maps. 
+private void addZonesToDb(Map<String, Zone> zonesMap) throws RuntimeException {
+    try {
+        for (Map.Entry<String, Zone> entry : zonesMap.entrySet()) {
+            String key = entry.getKey();
+            Zone value = entry.getValue();
 
-	    	    if(value.getDescriptions()==null) {
-	    	    	LOGGER.warn("This zone " + key + " has no descriptions");
-	    	    	continue;
-	    	    }
-	    	    
-	    	    List<ZoneDescription> zoneDescriptions = value.getDescriptions();
-	    	    value.setDescriptons(null);
-	
-	    	    zoneService.create(value);
-	    	    
-	    	    for(ZoneDescription description : zoneDescriptions) {
-	    	    	description.setZone(value);
-	    	    	zoneService.addDescription(value, description);
-	    	    }
-	        }
-        
-		}catch(Exception e) {
-			LOGGER.error("An error occured while loading zones",e);
-			
-		}
-		
-	}
+            if (value.getDescriptions() == null) {
+                StringBuilder warningMessage = new StringBuilder();
+                warningMessage.append("This zone ").append(key).append(" has no descriptions");
+                LOGGER.warn(warningMessage.toString());
+                continue;
+            }
+
+            List<ZoneDescription> zoneDescriptions = value.getDescriptions();
+            value.setDescriptons(null);
+
+            zoneService.create(value);
+
+            for (ZoneDescription description : zoneDescriptions) {
+                description.setZone(value);
+                zoneService.addDescription(value, description);
+            }
+        }
+    } catch (Exception e) {
+        LOGGER.error("An error occured while loading zones", e);
+    }
+}
+// End of GEN AI fix
 	
 	private void createLanguages() throws ServiceException {
 		LOGGER.info(String.format("%s : Populating Languages ", name));
