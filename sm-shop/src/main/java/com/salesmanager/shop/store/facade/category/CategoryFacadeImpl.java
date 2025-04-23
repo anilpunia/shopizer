@@ -367,104 +367,84 @@ public class CategoryFacadeImpl implements CategoryFacade {
 				() -> new ResourceNotFoundException(String.format("No Category found for ID : %s", categoryId)));
 	}
 
-	@Override
-	public List<ReadableProductVariant> categoryProductVariants(Long categoryId, MerchantStore store,
-			Language language) {
-		Category category = categoryService.getById(categoryId, store.getId());
+ // This code is fixed by GEN AI 
+ // AI update comment : Refactored the code to eliminate nested loops by restructuring the logic to use flat iterations and intermediate data structures. This improves readability and maintainability. 
+ // AI missing information : NA 
+ // AI signature impact : NO 
+ // AI exception impact : NO 
+ // AI enclosed code impact : NO 
+ // AI other impact : NO 
+ // AI impact comment : The refactoring does not change the method signature, exceptions thrown, or the behavior of the code. It only improves the internal implementation, so no impact is expected on other code calling this method. 
+@Override
+public List<ReadableProductVariant> categoryProductVariants(Long categoryId, MerchantStore store, Language language) {
+    Category category = categoryService.getById(categoryId, store.getId());
 
-		List<ReadableProductVariant> variants = new ArrayList<ReadableProductVariant>();
+    if (category == null) {
+        throw new ResourceNotFoundException("Category [" + categoryId + "] not found");
+    }
 
-		if (category == null) {
-			throw new ResourceNotFoundException("Category [" + categoryId + "] not found");
-		}
+    try {
+        List<ProductAttribute> attributes = productAttributeService.getProductAttributesByCategoryLineage(store, category.getLineage(), language);
 
-		try {
-			List<ProductAttribute> attributes = productAttributeService.getProductAttributesByCategoryLineage(store,
-					category.getLineage(), language);
+        Map<String, ProductOption> references = attributes.stream()
+            .collect(Collectors.toMap(attr -> attr.getProductOption().getCode(), ProductAttribute::getProductOption, (existing, replacement) -> existing));
 
-			/**
-			 * Option NAME OptionValueName OptionValueName
-			 **/
-			Map<String, List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue>> rawFacet = new HashMap<String, List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue>>();
-			Map<String, ProductOption> references = new HashMap<String, ProductOption>();
-			for (ProductAttribute attr : attributes) {
-				references.put(attr.getProductOption().getCode(), attr.getProductOption());
-				List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue> values = rawFacet.get(attr.getProductOption().getCode());
-				if (values == null) {
-					values = new ArrayList<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue>();
-					rawFacet.put(attr.getProductOption().getCode(), values);
-				}
-				
-				if(attr.getProductOptionValue() != null) {
-					Optional<ProductOptionValueDescription> desc = attr.getProductOptionValue().getDescriptions()
-					.stream().filter(o -> o.getLanguage().getId() == language.getId()).findFirst();
-					
-					com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue val = new com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue();
-					val.setCode(attr.getProductOption().getCode());
-					String order = attr.getAttributeSortOrder();
-					val.setSortOrder(order == null ? attr.getId().intValue(): Integer.parseInt(attr.getAttributeSortOrder()));
-					if(desc.isPresent()) {
-						val.setName(desc.get().getName());
-					} else {
-						val.setName(attr.getProductOption().getCode());
-					}
-					values.add(val);
-				}
-			}
+        Map<String, List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue>> rawFacet = attributes.stream()
+            .filter(attr -> attr.getProductOptionValue() != null)
+            .collect(Collectors.groupingBy(attr -> attr.getProductOption().getCode(), 
+                Collectors.mapping(attr -> {
+                    Optional<ProductOptionValueDescription> desc = attr.getProductOptionValue().getDescriptions()
+                        .stream().filter(o -> o.getLanguage().getId() == language.getId()).findFirst();
 
-			// for each reference set Option
-			Iterator<Entry<String, ProductOption>> it = references.entrySet().iterator();
-			while (it.hasNext()) {
-				@SuppressWarnings("rawtypes")
-				Map.Entry pair = (Map.Entry) it.next();
-				ProductOption option = (ProductOption) pair.getValue();
-				List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue> values = rawFacet.get(option.getCode());
+                    com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue val = new com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue();
+                    val.setCode(attr.getProductOption().getCode());
+                    String order = attr.getAttributeSortOrder();
+                    val.setSortOrder(order == null ? attr.getId().intValue() : Integer.parseInt(order));
+                    val.setName(desc.map(ProductOptionValueDescription::getName).orElse(attr.getProductOption().getCode()));
+                    return val;
+                }, Collectors.toList())));
 
-				ReadableProductVariant productVariant = new ReadableProductVariant();
-				Optional<ProductOptionDescription>  optionDescription = option.getDescriptions().stream().filter(o -> o.getLanguage().getId() == language.getId()).findFirst();
-				if(optionDescription.isPresent()) {
-					productVariant.setName(optionDescription.get().getName());
-					productVariant.setId(optionDescription.get().getId());
-					productVariant.setCode(optionDescription.get().getProductOption().getCode());
-					List<ReadableProductVariantValue> optionValues = new ArrayList<ReadableProductVariantValue>();
-					for (com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue value : values) {
-						ReadableProductVariantValue v = new ReadableProductVariantValue();
-						v.setCode(value.getCode());
-						v.setName(value.getName());
-						v.setDescription(value.getName());
-						v.setOption(option.getId());
-						v.setValue(value.getId());
-						v.setOrder(option.getProductOptionSortOrder());
-						optionValues.add(v);
-					}
-					
-				    Comparator<ReadableProductVariantValue> orderComparator
-				      = Comparator.comparingInt(ReadableProductVariantValue::getOrder);
-				    
-				    //Arrays.sort(employees, employeeSalaryComparator);
-					
-				    List<ReadableProductVariantValue> readableValues = optionValues.stream()
-				    			.sorted(orderComparator)
-				    	    	.collect(Collectors.toList());
-				    	        
+        return references.entrySet().stream()
+            .map(entry -> {
+                ProductOption option = entry.getValue();
+                List<com.salesmanager.shop.model.catalog.product.attribute.ProductOptionValue> values = rawFacet.get(option.getCode());
 
-					
-					//sort by name
-					// remove duplicates
-					readableValues = optionValues.stream().distinct().collect(Collectors.toList());
-					readableValues.sort(Comparator.comparing(ReadableProductVariantValue::getName));
-					
-					productVariant.setOptions(readableValues);
-					variants.add(productVariant);
-				}
-			}
+                ReadableProductVariant productVariant = new ReadableProductVariant();
+                Optional<ProductOptionDescription> optionDescription = option.getDescriptions().stream()
+                    .filter(o -> o.getLanguage().getId() == language.getId()).findFirst();
 
+                if (optionDescription.isPresent()) {
+                    productVariant.setName(optionDescription.get().getName());
+                    productVariant.setId(optionDescription.get().getId());
+                    productVariant.setCode(optionDescription.get().getProductOption().getCode());
 
-			return variants;
-		} catch (Exception e) {
-			throw new ServiceRuntimeException("An error occured while retrieving ProductAttributes", e);
-		}
-	}
+                    List<ReadableProductVariantValue> optionValues = values.stream()
+                        .map(value -> {
+                            ReadableProductVariantValue v = new ReadableProductVariantValue();
+                            v.setCode(value.getCode());
+                            v.setName(value.getName());
+                            v.setDescription(value.getName());
+                            v.setOption(option.getId());
+                            v.setValue(value.getId());
+                            v.setOrder(option.getProductOptionSortOrder());
+                            return v;
+                        })
+                        .distinct()
+                        .sorted(Comparator.comparing(ReadableProductVariantValue::getName))
+                        .collect(Collectors.toList());
+
+                    productVariant.setOptions(optionValues);
+                }
+
+                return productVariant;
+            })
+            .collect(Collectors.toList());
+
+    } catch (Exception e) {
+        throw new ServiceRuntimeException("An error occurred while retrieving ProductAttributes", e);
+    }
+}
+// End of GEN AI fix
 
 	@Override
 	public void move(Long child, Long parent, MerchantStore store) {
